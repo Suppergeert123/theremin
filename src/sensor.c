@@ -182,4 +182,6 @@ ISR(TIMER1_OVF_vect)
     {
         cooldown_overflows--;
     }
+
+    ButtonsTick();
 }
