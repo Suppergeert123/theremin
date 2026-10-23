@@ -43,6 +43,11 @@ static void SetTriggerLow(void)
     PORTB &= ~(1 << TRIG_PIN);
 }
 
+static uint16_t CalculateDistance(uint16_t ticks)
+{
+    return ticks / 116U;
+}
+
 // begin met luisteren voor de echo, aangeroepen in de END PULSE state
 static void StartEchoCapture(void)
 {
@@ -79,6 +84,8 @@ void InitializeUltrasonicSensor(void)
 
     // alleen de cooldown interupt, anderen worden bij ReadDistance aangezet
     TIMSK1 = (1 << TOIE1);
+
+    state = START_PULSE;
 }
 
 void ReadDistance(void)
@@ -100,7 +107,7 @@ void ReadDistance(void)
         if ((uint16_t)(TCNT1 - trigger_start_ticks) >= TRIGGER_TICKS)
         {
             SetTriggerLow();                 // exit state
-            ArmCapture();
+            StartEchoCapture();
             state = WAIT;
         }
         break;
@@ -131,10 +138,6 @@ uint16_t GetReadDistance(void)
     return distance_cm;
 }
 
-uint16_t CalculateDistance(uint16_t ticks)
-{
-    return ticks / 116U;
-}
 
 // ---------------- ISR's -------------- //
 
@@ -153,10 +156,10 @@ ISR(TIMER1_CAPT_vect)
     else
     {
         // echo einde
-        uint16_t pulse_ticks = captured_ticks - start_ticks;
+        pulse_ticks = captured_ticks - start_ticks;
 
         measurement_timeout = 0;
-        measurement_ready = 1;
+        capture_flag = 1;
 
         TIMSK1 &= ~((1 << ICIE1) | (1 << OCIE1A));
         TCCR1B |= (1 << ICES1);
@@ -167,7 +170,7 @@ ISR(TIMER1_CAPT_vect)
 ISR(TIMER1_COMPA_vect)
 {
     measurement_timeout = 1;
-    measurement_ready = 1;
+    capture_flag = 1;
 
     TIMSK1 &= ~((1 << ICIE1) | (1 << OCIE1A));
     TCCR1B |= (1 << ICES1);
