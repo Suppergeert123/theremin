@@ -8,6 +8,7 @@
 #include "sensor.h"
 #include "filter.h"
 #include "buttons.h"
+#include "display7seg.h"
 
 #define STANDARD_FILTER_SIZE 5
 static bool sound_enabled = false;   // later voor buzzer
@@ -18,6 +19,8 @@ static void Initialize(void)
     InitializeUltrasonicSensor();
     InitFilter(STANDARD_FILTER_SIZE);
     InitializeButtons();
+    Init7SegmentDisplay();
+    ShowFilterSize(GetFilterSize());
     // TODO:
     // - ADC free-running voor de potmeter initialiseren
     // - ADC-interrupt inschakelen
@@ -45,7 +48,7 @@ int main(void)
                 uint16_t frequency = CalculateFrequency(filtered);
 
                 sound_enabled = true;
-                UpdateDisplay(GetFilterSize(), frequency);
+                UpdateDisplay(distance, frequency);
             }
             else
             {
@@ -59,7 +62,7 @@ int main(void)
         if (step != 0)
         {
             SetFilterSize(NextFilterSize(GetFilterSize(), step));
-            // UpdateFilterDisplay();         // comes with the 7-segment display
+            ShowFilterSize(GetFilterSize());
         }
 
     }
