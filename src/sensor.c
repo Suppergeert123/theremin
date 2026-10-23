@@ -2,28 +2,73 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <util/delay.h>
 
 #define TRIG_PIN PB1
 #define ECHO_PIN PB0
 
 // timer 1 op prescaler 8. timout is ruim genoeg voor 65cm
 #define ECHO_TIMEOUT_TICKS 12000U
+#define TRIGGER_TICKS 20U  // 10us trigger pulse 
 
 // sensor heeft 60ms timeout tussen metingen nodig. 2 overflows van 32ms
 #define COOLDOWN_OVERFLOWS 2
 
+typedef enum
+{
+    START_PULSE,
+    END_PULSE,
+    WAIT
+} SensorState;
+
+static SensorState state = START_PULSE;
+static uint16_t trigger_start_ticks = 0; 
+
 // gedeelde variabelen
-static volatile uint16_t distance_cm = 0;
-static volatile uint8_t measurement_ready = 0;
+static volatile uint16_t pulse_ticks = 0;
+static volatile uint8_t capture_flag = 0;         
 static volatile uint8_t measurement_timeout = 0;
 static volatile uint8_t cooldown_overflows = 0;
+
+// variabelen die door de WAIT state worden geset 
+static uint16_t distance_cm = 0;
+static bool measurement_ready = false; 
+
+static void SetTriggerHigh(void)
+{
+    PORTB |= (1 << TRIG_PIN);
+}
+
+static void SetTriggerLow(void)
+{
+    PORTB &= ~(1 << TRIG_PIN);
+}
+
+// begin met luisteren voor de echo, aangeroepen in de END PULSE state
+static void StartEchoCapture(void)
+{
+    uint8_t old_sreg = SREG;
+    cli();
+
+    measurement_timeout = 0;
+    capture_flag = 0;
+
+    TCCR1B |= (1 << ICES1);
+    TCNT1 = 0;
+    TIFR1 = (1 << ICF1) | (1 << OCF1A);
+
+    OCR1A = ECHO_TIMEOUT_TICKS;
+    TIMSK1 |= (1 << ICIE1) | (1 << OCIE1A);
+
+    cooldown_overflows = COOLDOWN_OVERFLOWS;
+
+    SREG = old_sreg;
+}
 
 void InitializeUltrasonicSensor(void)
 {
     DDRB |= (1 << TRIG_PIN);
     DDRB &= ~(1 << ECHO_PIN);
-    PORTB &= ~(1 << TRIG_PIN);
+    SetTriggerLow();
 
     TCCR1A = 0;
     TCCR1B = 0;
@@ -38,33 +83,41 @@ void InitializeUltrasonicSensor(void)
 
 void ReadDistance(void)
 {
-    uint8_t old_sreg = SREG;
-    cli();
-
-    // niks doen als sensor niet ready is
-    if (measurement_ready || cooldown_overflows ||
-        (TIMSK1 & ((1 << ICIE1) | (1 << OCIE1A))))
+    switch (state)
     {
-        SREG = old_sreg;
-        return;
+    case START_PULSE:
+        // alleen door als sensor klaar is en vorige meting is verwerkt
+        if (measurement_ready || cooldown_overflows)
+        {
+            break;
+        }
+        SetTriggerHigh();                    // entry state
+        trigger_start_ticks = TCNT1;         // exit state
+        state = END_PULSE;                  
+        break;
+
+    case END_PULSE:
+        if ((uint16_t)(TCNT1 - trigger_start_ticks) >= TRIGGER_TICKS)
+        {
+            SetTriggerLow();                 // exit state
+            ArmCapture();
+            state = WAIT;
+        }
+        break;
+
+    case WAIT:
+        if (capture_flag)                    
+        {
+            capture_flag = 0;
+
+            // do state
+            distance_cm = measurement_timeout ? 0 : CalculateDistance(pulse_ticks);
+            measurement_ready = true;
+
+            state = START_PULSE;
+        }
+        break;
     }
-
-    measurement_timeout = 0;
-    TCCR1B |= (1 << ICES1);            // eerst rising edge
-    TCNT1 = 0;
-
-    TIFR1 = (1 << ICF1) | (1 << OCF1A);
-
-    OCR1A = ECHO_TIMEOUT_TICKS;
-    TIMSK1 |= (1 << ICIE1) | (1 << OCIE1A);
-
-    cooldown_overflows = COOLDOWN_OVERFLOWS;
-
-    SREG = old_sreg;
-
-    PORTB |= (1 << TRIG_PIN);
-    _delay_us(10);
-    PORTB &= ~(1 << TRIG_PIN);
 }
 
 bool hasNewMeasurement(void)
@@ -74,19 +127,13 @@ bool hasNewMeasurement(void)
 
 uint16_t GetReadDistance(void)
 {
-    uint8_t old_sreg = SREG;
-    uint16_t result;
-    uint8_t timed_out;
+    measurement_ready = false;
+    return distance_cm;
+}
 
-    cli();
-
-    result = distance_cm;
-    timed_out = measurement_timeout;
-    measurement_ready = 0;
-
-    SREG = old_sreg;
-
-    return timed_out ? 0 : result;
+uint16_t CalculateDistance(uint16_t ticks)
+{
+    return ticks / 116U;
 }
 
 // ---------------- ISR's -------------- //
@@ -107,8 +154,6 @@ ISR(TIMER1_CAPT_vect)
     {
         // echo einde
         uint16_t pulse_ticks = captured_ticks - start_ticks;
-
-        distance_cm = pulse_ticks / 116U;
 
         measurement_timeout = 0;
         measurement_ready = 1;
