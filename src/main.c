@@ -25,7 +25,6 @@ static void Initialize(void)
     // - ADC free-running voor de potmeter initialiseren
     // - ADC-interrupt inschakelen
     // - buzzer-timers initialiseren
-    // - TWI en 7-segmentdisplay initialiseren
 
     sei();
 }
