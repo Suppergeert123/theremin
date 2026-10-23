@@ -6,19 +6,22 @@
 #include "display.h"
 #include "frequency.h"
 #include "sensor.h"
+#include "filter.h"
+#include "buttons.h"
 
+#define STANDARD_FILTER_SIZE 5
 static bool sound_enabled = false;   // later voor buzzer
 
 static void Initialize(void)
 {
     InitDisplay();
     InitializeUltrasonicSensor();
-
+    InitFilter(STANDARD_FILTER_SIZE);
+    InitializeButtons();
     // TODO:
     // - ADC free-running voor de potmeter initialiseren
     // - ADC-interrupt inschakelen
     // - buzzer-timers initialiseren
-    // - pin-change-interrupts voor de knoppen instellen
     // - TWI en 7-segmentdisplay initialiseren
 
     sei();
@@ -38,16 +41,26 @@ int main(void)
 
             if (IsDistanceInRange(distance))
             {
-                uint16_t frequency = CalculateFrequency(distance);
+                uint16_t filtered = FilterDistance(distance);
+                uint16_t frequency = CalculateFrequency(filtered);
 
                 sound_enabled = true;
-                UpdateDisplay(distance, frequency);
+                UpdateDisplay(GetFilterSize(), frequency);
             }
             else
             {
                 sound_enabled = false;
+                ResetFilter();
                 ShowNoHand(MIN_FREQ_HZ);
             }
         }
+
+        int8_t step = ReadButtons(); // +1 als er vergroot is, -1 als er verkleint is
+        if (step != 0)
+        {
+            SetFilterSize(NextFilterSize(GetFilterSize(), step));
+            // UpdateFilterDisplay();         // comes with the 7-segment display
+        }
+
     }
 }
