@@ -36,10 +36,10 @@ static void WritePort(uint8_t address, uint8_t value)
 
 void Init7SegmentDisplay(void)
 {
-    ShowFilterSize(0);
+    UpdateFilterDisplay(0);
 }
 
-void ShowFilterSize(uint8_t size)
+void UpdateFilterDisplay(uint8_t size)
 {
     if (size > 15)
     {
