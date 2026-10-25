@@ -4,6 +4,6 @@
 #include <stdint.h>
 
 void Init7SegmentDisplay(void);
-void ShowFilterSize(uint8_t size);
+void UpdateFilterDisplay(uint8_t size);
 
 #endif

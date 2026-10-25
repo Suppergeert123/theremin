@@ -20,7 +20,7 @@ static void Initialize(void)
     InitFilter(STANDARD_FILTER_SIZE);
     InitializeButtons();
     Init7SegmentDisplay();
-    ShowFilterSize(GetFilterSize());
+    UpdateFilterDisplay(GetFilterSize());
     // TODO:
     // - ADC free-running voor de potmeter initialiseren
     // - ADC-interrupt inschakelen
@@ -61,7 +61,7 @@ int main(void)
         if (step != 0)
         {
             SetFilterSize(NextFilterSize(GetFilterSize(), step));
-            ShowFilterSize(GetFilterSize());
+            UpdateFilterDisplay(GetFilterSize());
         }
 
     }
