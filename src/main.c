@@ -9,6 +9,7 @@
 #include "filter.h"
 #include "buttons.h"
 #include "display7seg.h"
+#include "volume.h"
 
 #define STANDARD_FILTER_SIZE 5
 static bool sound_enabled = false;   // later voor buzzer
@@ -20,6 +21,7 @@ static void Initialize(void)
     InitFilter(STANDARD_FILTER_SIZE);
     InitializeButtons();
     Init7SegmentDisplay();
+    InitializeVolume();
     UpdateFilterDisplay(GetFilterSize());
     // TODO:
     // - ADC free-running voor de potmeter initialiseren
@@ -35,6 +37,8 @@ int main(void)
 
     while (1)
     {
+        SetVolume(GetVolume());
+
         ReadDistance();
 
         if (hasNewMeasurement())
@@ -47,7 +51,7 @@ int main(void)
                 uint16_t frequency = CalculateFrequency(filtered);
 
                 sound_enabled = true;
-                UpdateDisplay(distance, frequency);
+                UpdateDisplay(GetVolume(), frequency);
             }
             else
             {
