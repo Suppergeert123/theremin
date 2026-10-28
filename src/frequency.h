@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MIN_DISTANCE_CM 0
+#define MIN_DISTANCE_CM 2
 #define MAX_DISTANCE_CM 65
 
 #define MIN_FREQ_HZ 230

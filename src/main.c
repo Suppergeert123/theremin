@@ -13,7 +13,6 @@
 #include "tone.h"
 
 #define STANDARD_FILTER_SIZE 5
-static bool sound_enabled = false;   // later voor buzzer
 
 static void Initialize(void)
 {
