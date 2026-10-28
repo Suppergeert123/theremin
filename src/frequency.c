@@ -2,7 +2,7 @@
 
 bool IsDistanceInRange(uint16_t distance_cm)
 {
-    return distance_cm >= MIN_DISTANCE_CM && distance_cm <= MAX_DISTANCE_CM;
+    return distance_cm <= MAX_DISTANCE_CM;
 }
 
 uint16_t CalculateFrequency(uint16_t distance_cm)
