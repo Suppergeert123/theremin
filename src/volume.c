@@ -3,7 +3,9 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-static volatile uint8_t latest_volume = 0;
+#include "volume_calc.h"
+
+static volatile uint8_t latest_volume_adc = 0;
 
 void InitializeVolume(void)
 {
@@ -30,15 +32,15 @@ void InitializeVolume(void)
 
 uint8_t GetVolume(void)
 {
-    return latest_volume;
+    return AdcToPercent(latest_volume_adc);
 }
 
-void SetVolume(uint8_t volume)
+void SetVolume(uint8_t percent)
 {
-    OCR2B = volume;
+    OCR2B = PercentToDuty(percent);
 }
 
 ISR(ADC_vect)
 {
-    latest_volume = ADCH;        // ADLAR = 1: the 8 most significant bits
+    latest_volume_adc = ADCH;        // ADLAR = 1: the 8 most significant bits
 }
