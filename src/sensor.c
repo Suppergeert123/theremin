@@ -119,7 +119,7 @@ void ReadDistance(void)
             capture_flag = 0;
 
             // do state
-            distance_cm = measurement_timeout ? 66 : CalculateDistance(pulse_ticks);
+            distance_cm = measurement_timeout ? 0 : CalculateDistance(pulse_ticks);
             measurement_ready = true;
 
             state = START_PULSE;
